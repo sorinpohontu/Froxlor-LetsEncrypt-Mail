@@ -29,7 +29,7 @@ define('GETSSL_CONFIG', GETSSL_CONFIG_PATH . '/getssl.cfg');
 define('GETSSL_ACCOUNT_KEY', GETSSL_CONFIG_PATH . '/account.key');
 
 define('LETSENCRYPT_CA', 'https://acme-v02.api.letsencrypt.org');
-define('LETSENCRYPT_AGREEMENT', 'https://letsencrypt.org/documents/LE-SA-v1.0.1-July-27-2015.pdf');
+define('LETSENCRYPT_AGREEMENT', 'https://letsencrypt.org/documents/LE-SA-v1.2-November-15-2017.pdf');
 define('LETSENCRYPT_EMAIL', 'support@' . trim(`hostname -d`));
 define('LETSENCRYPT_ALLOW_RENEW_DAYS', 60);
 
