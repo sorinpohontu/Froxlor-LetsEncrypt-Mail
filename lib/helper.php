@@ -36,6 +36,38 @@ function getEmailHosts()
 }
 
 /*
+ * Check getSSL install
+ */
+function checkGetSSLInstall()
+{
+    if (!file_exists(GETSSL_BIN)) {
+        if (DEBUG) {
+            print("getSSL not found, installing ...\n");
+        }
+
+        /* @see https://github.com/srvrco/getSSL#installation */
+        file_put_contents(GETSSL_BIN, fopen(GETSSL_INSTALL, 'r'));
+        chmod(GETSSL_BIN, 700);
+        if (file_exists(GETSSL_BIN)) {
+            if (DEBUG) {
+                print("getSSL installed to " . GETSSL_BIN . " ...\n");
+            }
+
+            /* Create getSSL config path */
+            mkdir(GETSSL_CONFIG_PATH, 755);
+
+            return true;
+        } else {
+            print("Error installing getSSL ... Aborting!\n");
+
+            return false;
+        }
+    } else {
+        return true;
+    }
+}
+
+/*
  * Write getSSL config
  */
 function writeGetSSLConfig($sans)
