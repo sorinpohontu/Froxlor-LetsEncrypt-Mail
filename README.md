@@ -18,8 +18,23 @@ mail    IN    A     192.168.0.2  ; Froxlor IP
 
 You can configure `MAIL_HOST` in `config.php` if you use another custom email host for your hosted domains.
 
-* Check certificate enddate    
+## Installation
+Download latest release from this repository, and extract the content of it in a folder of you choice. Make sure you preserve the folder structure.
+
+Then run `php mail-san.php`.
+
+This will:
+* Download and install `getSSL`
+* Update Postfix `/etc/postfix/main.cf` TLS configuration (`smtpd_tls_cert_file`, `smtpd_tls_key_file`, `smtpd_tls_CAfile`)
+* Update Dovecot `/etc/dovecot/conf.d/10-ssl.conf` SSL configuration (`ssl_cert`, `ssl_key`, `ssl_ca`)
+* Add a `cron.daily` job to update the certificates
+
+Note: after running the jobs, `postfix` and `dovecot` services will be restarted (config: `RELOAD_CMD`).
+
+## Checking the certificates
+
+* Certificate enddate    
 `printf 'quit\n' | openssl s_client -connect mail.example.com:25 -starttls smtp 2>/dev/null | openssl x509 -noout -enddate`
 
-* [Check certificate SANs](https://stackoverflow.com/a/57990008)    
+* [Certificate SANs](https://stackoverflow.com/a/57990008)    
 `printf 'quit\n' | openssl s_client -connect mail.example.com:25 -starttls smtp 2>/dev/null | openssl x509 -noout -text | perl -l -0777 -ne '@names=/\bDNS:([^\s,]+)/g; print join("\n", sort @names);'`
