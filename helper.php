@@ -1,6 +1,9 @@
 <?php
 
 /**
+ *
+ * Let's Encrypt SAN certificates for Postfix / Dovecot on Froxlor Control Panel
+ *
  * Helper functions
  *
  * @author      Sorin Pohontu <sorin@frontline.ro>

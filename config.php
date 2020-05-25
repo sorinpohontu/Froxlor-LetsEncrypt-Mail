@@ -1,6 +1,9 @@
 <?php
 
 /**
+ *
+ * Let's Encrypt SAN certificates for Postfix / Dovecot on Froxlor Control Panel
+ *
  * Configuration
  *
  * @author      Sorin Pohontu <sorin@frontline.ro>
@@ -9,10 +12,6 @@
  * @version     1.10
  * @since       2020.05.20
  *
- */
-
-/*
- * Note that all Paths are without trailing slash (/)
  */
 
 /* Froxlor Control Panel configuration */
@@ -52,7 +51,7 @@ define('DEBUG', true);
 require_once (dirname(__FILE__) . DIRECTORY_SEPARATOR . 'lib/Db.class.php');
 
 /* Helper functions */
-require_once (dirname(__FILE__) . DIRECTORY_SEPARATOR . 'lib/helper.php');
+require_once (dirname(__FILE__) . DIRECTORY_SEPARATOR . 'helper.php');
 
 /* Froxlor Control Panel config files */
 require_once (CONTROL_PANEL_PATH . DIRECTORY_SEPARATOR . 'lib/userdata.inc.php');
