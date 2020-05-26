@@ -20,7 +20,7 @@ define('CONTROL_PANEL_PATH', '/var/www/froxlor');
 /* Main domain is machine FQDN */
 define('GETSSL_MAIN_DOMAIN', trim(`hostname --fqdn`));
 define('GETSSL_BIN', '/usr/local/bin/getssl');
-define('GETSSL_BIN_OPTIONS', '-u');
+define('GETSSL_BIN_OPTIONS', '-q -u');
 define('GETSSL_CONFIG_PATH', '/etc/ssl/mail');
 define('GETSSL_CONFIG', GETSSL_CONFIG_PATH . '/getssl.cfg');
 define('GETSSL_ACCOUNT_KEY', GETSSL_CONFIG_PATH . '/account.key');
@@ -46,6 +46,7 @@ define('CRON_DAILY_FILENAME', '/etc/cron.daily/lets-encrypt-mail-san');
 
 /* Show/hide debug info */
 define('DEBUG', true);
+define('DEBUG_LOG_IDENT', 'mail-san');
 
 /* Database helper class */
 require_once (dirname(__FILE__) . DIRECTORY_SEPARATOR . 'lib/Db.class.php');

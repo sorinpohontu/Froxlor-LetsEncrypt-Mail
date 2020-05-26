@@ -23,7 +23,7 @@ if (checkInstall()) {
         /* getSSL for all email hosts with an active email accounts */
         runGetSSLConfig(getDBEmailHosts($db));
     } catch (PDOException $e) {
-        print("Error connecting to Control Panel database!\n");
+        logSyslog(LOG_ERR, 'Error connecting to Control Panel database!');
     }
 }
 

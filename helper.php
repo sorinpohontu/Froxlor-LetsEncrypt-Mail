@@ -10,7 +10,7 @@
  * @copyright   2020 Frontline softworks <http://www.frontline.ro>
  *
  * @version     1.00
- * @since       2020.05.17
+ * @since       2020.05.26
  *
  */
 
@@ -26,8 +26,8 @@ function runGetSSLConfig($sans)
         /* Start getSSL */
         exec(GETSSL_BIN . (GETSSL_BIN_OPTIONS ? ' ' . GETSSL_BIN_OPTIONS : '') . ' -w ' . GETSSL_CONFIG_PATH . ' -d ' . GETSSL_MAIN_DOMAIN, $pOutput, $pExitCode);
         if (DEBUG) {
-            print("Exit code: $pExitCode\n");
-            print("Output: " . print_r($pOutput, true) . "\n");
+            logSyslog(LOG_DEBUG, "Exit code: $pExitCode");
+            logSyslog(LOG_DEBUG, $pOutput);
         }
         return $pExitCode;
     } else {
@@ -42,7 +42,7 @@ function checkInstall()
 {
     if (!file_exists(GETSSL_BIN)) {
         if (DEBUG) {
-            print("getSSL not found, installing ...\n");
+            logSyslog(LOG_DEBUG, 'getSSL not found, installing ...');
         }
 
         /* @see https://github.com/srvrco/getSSL#installation */
@@ -51,7 +51,7 @@ function checkInstall()
 
         if (file_exists(GETSSL_BIN)) {
             if (DEBUG) {
-                print("getSSL installed to " . GETSSL_BIN . " ...\n");
+                logSyslog(LOG_DEBUG, 'getSSL installed to ' . GETSSL_BIN);
             }
 
             /* updateMailSSLConfig: Postfix / Dovecot */
@@ -62,7 +62,7 @@ function checkInstall()
 
             return true;
         } else {
-            print("Error installing getSSL ... Aborting!\n");
+            logSyslog(LOG_ERR, 'Error installing getSSL ... Aborting!');
 
             return false;
         }
@@ -126,6 +126,27 @@ function updateConfigValue($fileName, $key, $value)
     }
 }
 
+/**
+ * Log message to syslog
+ *
+ * @param  [int] $priority
+ * @param  [string|array] $message
+ */
+
+function logSyslog($priority, $message)
+{
+    openlog(DEBUG_LOG_IDENT, LOG_PID, LOG_LOCAL0);
+
+    if (is_array($message)) {
+        foreach ($message as $line) {
+            syslog($priority, $line);
+        }
+    } else {
+        syslog($priority, $message);
+    }
+    closelog();
+}
+
 /*
  * Update Postfix / Dovecot SSL config
  */
@@ -138,7 +159,7 @@ function updateMailSSLConfig()
     /* Postfix */
     if (POSTFIX_UPDATE_CONFIG) {
         if (DEBUG) {
-            print("Updating Postfix\n");
+            logSyslog(LOG_DEBUG, 'Updating Postfix');
         }
         updateConfigValue(POSTFIX_CONFIG, 'smtpd_tls_cert_file', $certFile);
         updateConfigValue(POSTFIX_CONFIG, 'smtpd_tls_key_file', $certKeyFile);
@@ -148,7 +169,7 @@ function updateMailSSLConfig()
     /* Dovecot */
     if (DOVECOT_UPDATE_CONFIG) {
         if (DEBUG) {
-            print("Updating Dovecot\n");
+            logSyslog(LOG_DEBUG, 'Updating Dovecot');
         }
         updateConfigValue(DOVECOT_CONFIG, 'ssl_cert', '<' . $certFile);
         updateConfigValue(DOVECOT_CONFIG, 'ssl_key', '<' . $certKeyFile);
@@ -163,7 +184,7 @@ function updateDailyCronJob()
 {
     if (CRON_DAILY_CONFIG) {
         if (DEBUG) {
-            print("Updating cron.daily\n");
+            logSyslog(LOG_DEBUG, 'Updating cron.daily');
         }
 
         file_put_contents(CRON_DAILY_FILENAME, '#!/bin/sh
