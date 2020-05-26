@@ -21,7 +21,7 @@ if (checkInstall()) {
         $db = new Db($sql['host'], $sql['db'], $sql['user'], $sql['password']);
 
         /* getSSL for all email hosts with an active email accounts */
-        runGetSSLConfig(getDBEmailHosts($db));
+        runGetSSL(getDBEmailHosts($db));
     } catch (PDOException $e) {
         logSyslog(LOG_ERR, 'Error connecting to Control Panel database!');
     }

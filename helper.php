@@ -14,10 +14,13 @@
  *
  */
 
-/*
+/**
  * Run getSSL
+ *
+ * @param  string $sans
+ * @return boolean
  */
-function runGetSSLConfig($sans)
+function runGetSSL($sans)
 {
     if ($sans) {
         /* Rewrite getSSL config with current SANs */
@@ -35,8 +38,10 @@ function runGetSSLConfig($sans)
     }
 }
 
-/*
- * Check install
+/**
+ * checkInstall
+ *
+ * @return boolean
  */
 function checkInstall()
 {
@@ -71,8 +76,11 @@ function checkInstall()
     }
 }
 
-/*
+/**
+ * getDBEmailHosts
  * Get active email hosts from Froxlor Control Panel database
+ *
+ * @return string
  */
 function getDBEmailHosts()
 {
@@ -95,8 +103,12 @@ function getDBEmailHosts()
     return $mailHosts;
 }
 
-/*
+/**
+ * getDBSetting
  * Get setting value from Froxlor database
+ *
+ * @param  string $varname
+ * @return string
  */
 function getDBSetting($varname)
 {
@@ -108,9 +120,13 @@ function getDBSetting($varname)
     }
 }
 
-/*
- * Update config value
- * `key = old_value` will be replaced by `key = value`
+/**
+ * updateConfigValue
+ *
+ * @param  string $fileName
+ * @param  string $key
+ * @param  string $value
+ * @return boolean
  */
 function updateConfigValue($fileName, $key, $value)
 {
@@ -129,10 +145,9 @@ function updateConfigValue($fileName, $key, $value)
 /**
  * Log message to syslog
  *
- * @param  [int] $priority
- * @param  [string|array] $message
+ * @param  int $priority
+ * @param  string|array $message
  */
-
 function logSyslog($priority, $message)
 {
     openlog(DEBUG_LOG_IDENT, LOG_PID, LOG_LOCAL0);
@@ -147,7 +162,7 @@ function logSyslog($priority, $message)
     closelog();
 }
 
-/*
+/**
  * Update Postfix / Dovecot SSL config
  */
 function updateMailSSLConfig()
@@ -177,7 +192,7 @@ function updateMailSSLConfig()
     }
 }
 
-/*
+/**
  * Update daily cron job
  */
 function updateDailyCronJob()
@@ -196,8 +211,10 @@ function updateDailyCronJob()
     }
 }
 
-/*
+/**
  * Write getSSL config
+ *
+ * @param  string $sans
  */
 function writeGetSSLConfig($sans)
 {
