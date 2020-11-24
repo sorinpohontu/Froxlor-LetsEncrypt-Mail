@@ -21,7 +21,7 @@ define('CONTROL_PANEL_PATH', '/var/www/froxlor');
 define('GETSSL_MAIN_DOMAIN', trim(`hostname --fqdn`));
 define('GETSSL_BIN', '/usr/local/bin/getssl');
 define('GETSSL_BIN_OPTIONS', '-q -u');
-define('GETSSL_CONFIG_PATH', '/etc/ssl/mail');
+define('GETSSL_CONFIG_PATH', '/etc/ssl/letsencrypt');
 define('GETSSL_CONFIG', GETSSL_CONFIG_PATH . '/getssl.cfg');
 define('GETSSL_ACCOUNT_KEY', GETSSL_CONFIG_PATH . '/account.key');
 define('GETSSL_INSTALL', 'https://raw.githubusercontent.com/srvrco/getssl/master/getssl');
