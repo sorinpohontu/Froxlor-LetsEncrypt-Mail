@@ -27,7 +27,10 @@ if (checkInstall()) {
         $domains = getSSLDomains();
         if ($domains) {
             foreach ($domains as $domain => $sans) {
-                runGetSSL($domain, $sans);
+                if (runGetSSL($domain, $sans) == 0) {
+                    //
+                    updateSSLDomainCertificate($domain);
+                }
             }
         }
     } catch (PDOException $e) {

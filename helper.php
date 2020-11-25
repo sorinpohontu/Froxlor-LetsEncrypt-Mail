@@ -117,6 +117,7 @@ function getSSLDomains()
 
     $domains = $GLOBALS['db']->query('SELECT id, domain, wwwserveralias FROM ' . TABLE_PANEL_DOMAINS .
         ' WHERE (deactivated = 0) ' .
+        ' AND (email_only = 0) ' .
         ' AND (letsencrypt = 1) ' .
         ' AND (parentdomainid = 0)'
     );
@@ -130,6 +131,7 @@ function getSSLDomains()
             // Get all defined subdomains for current domain
             $subDomains = $GLOBALS['db']->query('SELECT id, domain, wwwserveralias FROM ' . TABLE_PANEL_DOMAINS .
                 ' WHERE (deactivated = 0) ' .
+                ' AND (email_only = 0) ' .
                 ' AND (letsencrypt = 1) ' .
                 ' AND (parentdomainid = ' . $domain['id'] . ')'
             );
@@ -166,6 +168,28 @@ function getSSLDomains()
 
     return $result;
 }
+
+/**
+ * updateSSLDomainCertificate
+ * Update SSL Certificate in Froxlor Control Panel database
+ *
+ * @return integer
+ */
+function updateSSLDomainCertificate($domain)
+{
+    $result = -1;
+
+    // Get certificate content
+    $domainPath = GETSSL_CONFIG_PATH . DIRECTORY_SEPARATOR . $domain;
+    if (file_exists($domainPath . DIRECTORY_SEPARATOR . $domain . '.crt')) {
+        $certificate = file_get_contents($domainPath . DIRECTORY_SEPARATOR . $domain . '.crt');
+
+        // Check certificate changes in TABLE_PANEL_DOMAIN_SSL_SETTINGS
+    }
+
+    return $result;
+}
+
 
 /**
  * getDBSetting
@@ -305,9 +329,6 @@ ACCOUNT_KEY="' . GETSSL_ACCOUNT_KEY . '"
 ACCOUNT_KEY_TYPE="rsa"
 PRIVATE_KEY_ALG="rsa"
 REUSE_PRIVATE_KEY="true"
-
-# The command needed to reload apache / nginx or whatever you use
-RELOAD_CMD="' . RELOAD_CMD . '"
 
 # The time period within which you want to allow renewal of a certificate
 RENEW_ALLOW="' . LETSENCRYPT_ALLOW_RENEW_DAYS . '"

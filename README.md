@@ -29,7 +29,7 @@ On first run, the installer will:
 * Update Dovecot `/etc/dovecot/conf.d/10-ssl.conf` SSL configuration (`ssl_cert`, `ssl_key`, `ssl_ca`)
 * Add a `cron.daily` job to update the certificates
 
-Note: after running the jobs, `postfix` and `dovecot` services will be restarted (config: `RELOAD_CMD`).
+Note: after running the jobs, if there are changes in local certificates services will be restarted (config: `RELOAD_MAIL_CMD`, `RELOAD_WWW_CMD`).
 
 ## Checking the certificates
 

@@ -33,7 +33,8 @@ define('LETSENCRYPT_ALLOW_RENEW_DAYS', 60);
 
 define('MAIL_HOST', 'mail');
 
-define('RELOAD_CMD', 'service dovecot stop && service postfix stop && service postfix start && service dovecot start');
+define('RELOAD_MAIL_CMD', 'service dovecot stop && service postfix stop && service postfix start && service dovecot start');
+define('RELOAD_WWW_CMD', 'service apache2 stop && service apache2 start');
 
 define('POSTFIX_UPDATE_CONFIG', true);
 define('POSTFIX_CONFIG', '/etc/postfix/main.cf');
