@@ -18,7 +18,7 @@
 define('CONTROL_PANEL_PATH', '/var/www/froxlor');
 
 /* Main domain is machine FQDN */
-define('GETSSL_MAIN_DOMAIN', trim(`hostname --fqdn`));
+define('GETSSL_HOSTNAME', trim(`hostname --fqdn`));
 define('GETSSL_BIN', '/usr/local/bin/getssl');
 define('GETSSL_BIN_OPTIONS', '-q -u');
 define('GETSSL_CONFIG_PATH', '/etc/ssl/letsencrypt');
@@ -33,7 +33,7 @@ define('LETSENCRYPT_ALLOW_RENEW_DAYS', 60);
 
 define('MAIL_HOST', 'mail');
 
-define('RELOAD_CMD', 'service dovecot restart && service postfix restart');
+define('RELOAD_CMD', 'service dovecot stop && service postfix stop && service postfix start && service dovecot start');
 
 define('POSTFIX_UPDATE_CONFIG', true);
 define('POSTFIX_CONFIG', '/etc/postfix/main.cf');
@@ -46,7 +46,7 @@ define('CRON_DAILY_FILENAME', '/etc/cron.daily/lets-encrypt-mail-san');
 
 /* Show/hide debug info */
 define('DEBUG', true);
-define('DEBUG_LOG_IDENT', 'mail-san');
+define('DEBUG_LOG_IDENT', 'getssl-froxlor');
 
 /* Database helper class */
 require_once (dirname(__FILE__) . DIRECTORY_SEPARATOR . 'lib/Db.class.php');

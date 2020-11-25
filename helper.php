@@ -17,25 +17,27 @@
 /**
  * Run getSSL
  *
+ * @param  string $domain
  * @param  string $sans
  * @return boolean
  */
-function runGetSSL($sans)
+function runGetSSL($domain, $sans = NULL)
 {
-    if ($sans) {
-        /* Rewrite getSSL config with current SANs */
-        writeGetSSLConfig($sans);
+    /* Configure getSSL main config */
+    writeGetSSLMainConfig();
 
-        /* Start getSSL */
-        exec(GETSSL_BIN . (GETSSL_BIN_OPTIONS ? ' ' . GETSSL_BIN_OPTIONS : '') . ' -w ' . GETSSL_CONFIG_PATH . ' -d ' . GETSSL_MAIN_DOMAIN, $pOutput, $pExitCode);
-        if (DEBUG) {
-            logSyslog(LOG_DEBUG, "Exit code: $pExitCode");
-            logSyslog(LOG_DEBUG, $pOutput);
-        }
-        return $pExitCode;
-    } else {
-        return false;
+    if ($sans) {
+        writeGetSSLConfig($domain, $sans);
     }
+
+    /* Start getSSL */
+    exec(GETSSL_BIN . (GETSSL_BIN_OPTIONS ? ' ' . GETSSL_BIN_OPTIONS : '') . ' -w ' . GETSSL_CONFIG_PATH . ' -d ' . $domain, $pOutput, $pExitCode);
+    if (DEBUG) {
+        logSyslog(LOG_DEBUG, "Exit code: $pExitCode");
+        logSyslog(LOG_DEBUG, $pOutput);
+    }
+
+    return $pExitCode;
 }
 
 /**
@@ -104,6 +106,68 @@ function getDBEmailHosts()
 }
 
 /**
+ * getSSLDomains
+ * Get active LetsEncrypt domains from Froxlor Control Panel database
+ *
+ * @return string
+ */
+function getSSLDomains()
+{
+    $result = array();
+
+    $domains = $GLOBALS['db']->query('SELECT id, domain, wwwserveralias FROM ' . TABLE_PANEL_DOMAINS .
+        ' WHERE (deactivated = 0) ' .
+        ' AND (letsencrypt = 1) ' .
+        ' AND (parentdomainid = 0)'
+    );
+
+    if ($domains) {
+        foreach ($domains as $domain) {
+            if ($domain['wwwserveralias'] == 1) {
+                $result[$domain['domain']] = 'www.' . $domain['domain'];
+            }
+
+            // Get all defined subdomains for current domain
+            $subDomains = $GLOBALS['db']->query('SELECT id, domain, wwwserveralias FROM ' . TABLE_PANEL_DOMAINS .
+                ' WHERE (deactivated = 0) ' .
+                ' AND (letsencrypt = 1) ' .
+                ' AND (parentdomainid = ' . $domain['id'] . ')'
+            );
+
+            if (count($subDomains) > 0) {
+                foreach ($subDomains as $subDomain) {
+                    // WWW alias
+                    if ($subDomain['wwwserveralias'] == 1) {
+                        if (strpos($result[$domain['domain']], 'www.' . $subDomain['domain']) === false) {
+                            if (isset($result[$domain['domain']])) {
+                                $result[$domain['domain']] .= ',www.' . $subDomain['domain'];
+                            } else {
+                                $result[$domain['domain']] = 'www.' . $subDomain['domain'];
+                            }
+                        }
+                    }
+
+                    if (isset($result[$domain['domain']])) {
+                        $result[$domain['domain']] .= ',';
+                    }
+
+                    if (isset($result[$domain['domain']])) {
+                        $result[$domain['domain']] .= $subDomain['domain'];
+                    } else {
+                        $result[$domain['domain']] = $subDomain['domain'];
+                    }
+                }
+            } else {
+                $result[$domain['domain']] = '';
+            }
+
+        }
+    }
+
+    return $result;
+}
+
+/**
  * getDBSetting
  * Get setting value from Froxlor database
  *
@@ -167,9 +231,9 @@ function logSyslog($priority, $message)
  */
 function updateMailSSLConfig()
 {
-    $certFile = GETSSL_CONFIG_PATH . DIRECTORY_SEPARATOR . GETSSL_MAIN_DOMAIN . DIRECTORY_SEPARATOR . GETSSL_MAIN_DOMAIN . '.crt';
-    $certKeyFile = GETSSL_CONFIG_PATH . DIRECTORY_SEPARATOR . GETSSL_MAIN_DOMAIN . DIRECTORY_SEPARATOR . GETSSL_MAIN_DOMAIN . '.key';
-    $certCAFile = GETSSL_CONFIG_PATH . DIRECTORY_SEPARATOR . GETSSL_MAIN_DOMAIN . DIRECTORY_SEPARATOR . 'fullchain.crt';
+    $certFile = GETSSL_CONFIG_PATH . DIRECTORY_SEPARATOR . GETSSL_HOSTNAME . DIRECTORY_SEPARATOR . GETSSL_HOSTNAME . '.crt';
+    $certKeyFile = GETSSL_CONFIG_PATH . DIRECTORY_SEPARATOR . GETSSL_HOSTNAME . DIRECTORY_SEPARATOR . GETSSL_HOSTNAME . '.key';
+    $certCAFile = GETSSL_CONFIG_PATH . DIRECTORY_SEPARATOR . GETSSL_HOSTNAME . DIRECTORY_SEPARATOR . 'fullchain.crt';
 
     /* Postfix */
     if (POSTFIX_UPDATE_CONFIG) {
@@ -204,7 +268,7 @@ function updateDailyCronJob()
 
         file_put_contents(CRON_DAILY_FILENAME, '#!/bin/sh
 
-# Update Let\'s Encrypt SAN certificates for Postfix / Dovecot
+# Update Let\'s Encrypt Froxlor certificates
 /usr/bin/php ' . realpath(dirname($_SERVER['SCRIPT_FILENAME'])) . DIRECTORY_SEPARATOR . basename($_SERVER['SCRIPT_FILENAME']) . " > /dev/null 2>&1\n");
 
         chmod(CRON_DAILY_FILENAME, 755);
@@ -212,11 +276,9 @@ function updateDailyCronJob()
 }
 
 /**
- * Write getSSL config
- *
- * @param  string $sans
+ * Write getSSL Main config
  */
-function writeGetSSLConfig($sans)
+function writeGetSSLMainConfig()
 {
     /* Check getSSL config path */
     if (!file_exists(GETSSL_CONFIG_PATH)) {
@@ -253,8 +315,29 @@ RENEW_ALLOW="' . LETSENCRYPT_ALLOW_RENEW_DAYS . '"
 # ACME Challenge Location
 ACL=(\'' . $acmeChallengePath . '\')
 USE_SINGLE_ACL="true"
+');
 
-# Domains
+}
+
+/**
+ * Write getSSL config
+ *
+ * @param  string $domain
+ * @param  string $sans
+ */
+function writeGetSSLConfig($domain, $sans)
+{
+    /* Check getSSL config path */
+    if (!file_exists(GETSSL_CONFIG_PATH)) {
+        mkdir(GETSSL_CONFIG_PATH, 755);
+    }
+
+    /* Check getSSL domain config path */
+    if (!file_exists(GETSSL_CONFIG_PATH . DIRECTORY_SEPARATOR . $domain)) {
+        mkdir(GETSSL_CONFIG_PATH . DIRECTORY_SEPARATOR . $domain, 755);
+    }
+
+    file_put_contents(GETSSL_CONFIG_PATH . DIRECTORY_SEPARATOR . $domain . DIRECTORY_SEPARATOR . 'getssl.cfg', '# SANs
 SANS="' . $sans . '"
 ');
 

@@ -20,8 +20,16 @@ if (checkInstall()) {
         /* Database connection */
         $db = new Db($sql['host'], $sql['db'], $sql['user'], $sql['password']);
 
-        /* getSSL for all email hosts with an active email accounts */
-        runGetSSL(getDBEmailHosts($db));
+        /* Generate a single SSL certificate for all email hosts with an active email accounts (including GETSSL_HOSTNAME) */
+        // runGetSSL(GETSSL_HOSTNAME, getDBEmailHosts($db));
+
+        /* Generate SSL certificates for all defined SSL Domains */
+        $domains = getSSLDomains();
+        if ($domains) {
+            foreach ($domains as $domain => $sans) {
+                runGetSSL($domain, $sans);
+            }
+        }
     } catch (PDOException $e) {
         logSyslog(LOG_ERR, 'Error connecting to Control Panel database!');
     }
