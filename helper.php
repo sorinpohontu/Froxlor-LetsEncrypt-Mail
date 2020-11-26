@@ -9,8 +9,8 @@
  * @author      Sorin Pohontu <sorin@frontline.ro>
  * @copyright   2020 Frontline softworks <http://www.frontline.ro>
  *
- * @version     1.00
- * @since       2020.05.26
+ * @version     1.20
+ * @since       2020.11.26
  *
  */
 
@@ -33,7 +33,7 @@ function runGetSSL($domain, $sans = NULL)
     /* Start getSSL */
     exec(GETSSL_BIN . (GETSSL_BIN_OPTIONS ? ' ' . GETSSL_BIN_OPTIONS : '') . ' -w ' . GETSSL_CONFIG_PATH . ' -d ' . $domain, $pOutput, $pExitCode);
     if (DEBUG) {
-        logSyslog(LOG_DEBUG, "Exit code: $pExitCode");
+        logSyslog(LOG_DEBUG, "runGetSSL for $domain exit code: $pExitCode");
         logSyslog(LOG_DEBUG, $pOutput);
     }
 
@@ -119,6 +119,7 @@ function getSSLDomains()
         ' WHERE (deactivated = 0) ' .
         ' AND (email_only = 0) ' .
         ' AND (letsencrypt = 1) ' .
+        ' AND (aliasdomain IS NULL) ' .
         ' AND (parentdomainid = 0)'
     );
 
@@ -133,6 +134,7 @@ function getSSLDomains()
                 ' WHERE (deactivated = 0) ' .
                 ' AND (email_only = 0) ' .
                 ' AND (letsencrypt = 1) ' .
+                ' AND (aliasdomain IS NULL) ' .
                 ' AND (parentdomainid = ' . $domain['id'] . ')'
             );
 
@@ -179,17 +181,108 @@ function updateSSLDomainCertificate($domain)
 {
     $result = -1;
 
-    // Get certificate content
-    $domainPath = GETSSL_CONFIG_PATH . DIRECTORY_SEPARATOR . $domain;
-    if (file_exists($domainPath . DIRECTORY_SEPARATOR . $domain . '.crt')) {
-        $certificate = file_get_contents($domainPath . DIRECTORY_SEPARATOR . $domain . '.crt');
+    // Path where all certificates are stored
+    $domainSSLPath = GETSSL_CONFIG_PATH . DIRECTORY_SEPARATOR . $domain;
 
-        // Check certificate changes in TABLE_PANEL_DOMAIN_SSL_SETTINGS
+    // Get domainID
+    $domainId = $GLOBALS['db']->single('SELECT id FROM ' . TABLE_PANEL_DOMAINS . ' WHERE domain = :domain', array('domain' => $domain));
+    if ($domainId) {
+        // Delete subdomains in TABLE_PANEL_DOMAIN_SSL_SETTINGS because they are included as SANS
+        $delSubdomains = $GLOBALS['db']->query('DELETE FROM ' . TABLE_PANEL_DOMAIN_SSL_SETTINGS . ' WHERE domainid IN ' .
+            '(SELECT id FROM ' . TABLE_PANEL_DOMAINS . ' WHERE parentdomainid = :domainid)', array('domainid' => $domainId));
+
+        if ((DEBUG) && ($delSubdomains > 0)) {
+            logSyslog(LOG_DEBUG, 'updateSSLDomainCertificate: Deleted ' . $delSubdomains . ' of domain [' . $domain . ']');
+        }
+
+        // Make sure the certificate file exists
+        if (file_exists($domainSSLPath . DIRECTORY_SEPARATOR . $domain . '.crt')) {
+            // Read local certificate
+            $sslCrt = file_get_contents($domainSSLPath . DIRECTORY_SEPARATOR . $domain . '.crt');
+
+            // Certificate info
+            $sslCrtInfo = openssl_x509_parse($sslCrt);
+
+            // Check if a record exists for current domain
+            $sslDomainId = $GLOBALS['db']->single('SELECT id FROM ' . TABLE_PANEL_DOMAIN_SSL_SETTINGS . ' WHERE domainid = :domainid', array('domainid' => $domainId));
+
+            if ($sslDomainId) {
+                // Check certificate changes
+                $sslCrtDatabase = $GLOBALS['db']->single('SELECT ssl_cert_file FROM ' . TABLE_PANEL_DOMAIN_SSL_SETTINGS . ' WHERE id = :id', array('id' => $sslDomainId));
+                if ($sslCrt != $sslCrtDatabase) {
+                    // Update certificate in TABLE_PANEL_DOMAIN_SSL_SETTINGS
+                    $certificate = $GLOBALS['db']->query('UPDATE ' . TABLE_PANEL_DOMAIN_SSL_SETTINGS . ' SET ssl_csr_file = :ssl_csr_file, ssl_cert_file = :ssl_cert_file, ssl_key_file = :ssl_key_file, ssl_ca_file = :ssl_ca_file, ssl_cert_chainfile = :ssl_cert_chainfile, ssl_fullchain_file = :ssl_fullchain_file, expirationdate = :expirationdate ' .
+                        ' WHERE id = :id', array(
+                            'id'                => $sslDomainId,
+                            'ssl_csr_file'       => file_get_contents($domainSSLPath . DIRECTORY_SEPARATOR . $domain . '.csr'),
+                            'ssl_cert_file'      => file_get_contents($domainSSLPath . DIRECTORY_SEPARATOR . $domain . '.crt'),
+                            'ssl_key_file'       => file_get_contents($domainSSLPath . DIRECTORY_SEPARATOR . $domain . '.key'),
+                            'ssl_ca_file'        => file_get_contents($domainSSLPath . DIRECTORY_SEPARATOR . 'chain.crt'),
+                            'ssl_cert_chainfile' => file_get_contents($domainSSLPath . DIRECTORY_SEPARATOR . 'chain.crt'),
+                            'ssl_fullchain_file' => file_get_contents($domainSSLPath . DIRECTORY_SEPARATOR . 'fullchain.crt'),
+                            'expirationdate'     => date('Y-m-d H:i:s', $sslCrtInfo['validTo_time_t']),
+                        )
+                    );
+
+                    $result = 0;
+                    if (DEBUG) {
+                        logSyslog(LOG_DEBUG, 'updateSSLDomainCertificate: Updated certificate for domain ' . $domain);
+                    }
+                } else {
+                    $result = 1;
+                    if (DEBUG) {
+                        logSyslog(LOG_DEBUG, 'updateSSLDomainCertificate: Certificate for domain ' . $domain . ' is unchanged.');
+                    }
+                }
+            } else {
+                // Add certificate in TABLE_PANEL_DOMAIN_SSL_SETTINGS
+                $certificate = $GLOBALS['db']->query('INSERT INTO ' . TABLE_PANEL_DOMAIN_SSL_SETTINGS . ' (domainid, ssl_csr_file, ssl_cert_file, ssl_key_file, ssl_ca_file, ssl_cert_chainfile, ssl_fullchain_file, expirationdate)' .
+                    'VALUES (:domainid, :ssl_csr_file, :ssl_cert_file, :ssl_key_file, :ssl_ca_file, :ssl_cert_chainfile, :ssl_fullchain_file, :expirationdate)', array(
+                        'domainid'           => $domainId,
+                        'ssl_csr_file'       => file_get_contents($domainSSLPath . DIRECTORY_SEPARATOR . $domain . '.csr'),
+                        'ssl_cert_file'      => file_get_contents($domainSSLPath . DIRECTORY_SEPARATOR . $domain . '.crt'),
+                        'ssl_key_file'       => file_get_contents($domainSSLPath . DIRECTORY_SEPARATOR . $domain . '.key'),
+                        'ssl_ca_file'        => file_get_contents($domainSSLPath . DIRECTORY_SEPARATOR . 'chain.crt'),
+                        'ssl_cert_chainfile' => file_get_contents($domainSSLPath . DIRECTORY_SEPARATOR . 'chain.crt'),
+                        'ssl_fullchain_file' => file_get_contents($domainSSLPath . DIRECTORY_SEPARATOR . 'fullchain.crt'),
+                        'expirationdate'     => date('Y-m-d H:i:s', $sslCrtInfo['validTo_time_t']),
+                    )
+                );
+
+                $result = 0;
+                if (DEBUG) {
+                    logSyslog(LOG_DEBUG, 'updateSSLDomainCertificate: Added certificate for domain ' . $domain);
+                }
+            }
+        } else {
+            $result = -1;
+            if (DEBUG) {
+                logSyslog(LOG_DEBUG, 'updateSSLDomainCertificate: Missing certificate for domain ' . $domain);
+            }
+        }
+    } else {
+        $result = -10;
+        if (DEBUG) {
+            logSyslog(LOG_DEBUG, 'updateSSLDomainCertificate: Unknown domain ' . $domain);
+        }
     }
+
 
     return $result;
 }
 
+/**
+ * triggerCron
+ * Trigger a cron task for Froxlor
+ *
+ * @param  integer $type
+ * @param  string  $data
+ * @return integer
+ */
+function triggerCron($type, $data = '')
+{
+    return $GLOBALS['db']->query('INSERT INTO ' . TABLE_PANEL_TASKS . ' (type, data) VALUES (:type, :data)', array('type' => $type, 'data' => $data));
+}
 
 /**
  * getDBSetting
