@@ -63,11 +63,11 @@ function checkInstall()
                 logSyslog(LOG_DEBUG, 'getSSL installed to ' . GETSSL_BIN);
             }
 
-            /* updateMailSSLConfig: Postfix / Dovecot */
-            updateMailSSLConfig();
+            /* updateServicesConfig: Postfix / Dovecot / Froxlor */
+            updateServicesConfig();
 
-            /* cron.daily */
-            updateDailyCronJob();
+            /* CronJob */
+            updateCronJob();
 
             return true;
         } else {
@@ -305,6 +305,19 @@ function getDBSetting($varname)
 }
 
 /**
+ * setDBSetting
+ * Set setting value from Froxlor database
+ *
+ * @param  string $varname
+ * @param  string $value
+ * @return string
+ */
+function setDBSetting($varname, $value)
+{
+    return $GLOBALS['db']->query('UPDATE ' . TABLE_PANEL_SETTINGS . ' SET value = "' . $value . '" WHERE varname = "' . $varname . '"');
+}
+
+/**
  * updateConfigValue
  *
  * @param  string $fileName
@@ -347,12 +360,13 @@ function logSyslog($priority, $message)
 }
 
 /**
- * Update Postfix / Dovecot SSL config
+ * Update Postfix / Dovecot / Frolxor config
  */
-function updateMailSSLConfig()
+function updateServicesConfig()
 {
     $certFile = GETSSL_CONFIG_PATH . DIRECTORY_SEPARATOR . GETSSL_HOSTNAME . DIRECTORY_SEPARATOR . GETSSL_HOSTNAME . '.crt';
     $certKeyFile = GETSSL_CONFIG_PATH . DIRECTORY_SEPARATOR . GETSSL_HOSTNAME . DIRECTORY_SEPARATOR . GETSSL_HOSTNAME . '.key';
+    $certChainFile = GETSSL_CONFIG_PATH . DIRECTORY_SEPARATOR . GETSSL_HOSTNAME . DIRECTORY_SEPARATOR . 'chain.crt';
     $certCAFile = GETSSL_CONFIG_PATH . DIRECTORY_SEPARATOR . GETSSL_HOSTNAME . DIRECTORY_SEPARATOR . 'fullchain.crt';
 
     /* Postfix */
@@ -374,24 +388,55 @@ function updateMailSSLConfig()
         updateConfigValue(DOVECOT_CONFIG, 'ssl_key', '<' . $certKeyFile);
         updateConfigValue(DOVECOT_CONFIG, 'ssl_ca', '<' . $certCAFile);
     }
+
+    /* Froxlor */
+    if (FROXLOR_UPDATE_CONFIG) {
+        if (DEBUG) {
+            logSyslog(LOG_DEBUG, 'Updating Froxlor config');
+        }
+
+        // `Settings -> Froxlor VirtualHost settings -> Enable Let's Encrypt for the froxlor vhost`: No
+        setDBSetting('le_froxlor_enabled', 0);
+
+        // `Settings -> SSL settings`
+        // Enable Let's Encrypt: Allow LE settings
+        setDBSetting('leenabled', 1);
+        // `Choose Let's Encrypt ACME implementation`: ACME v1 ()
+        setDBSetting('leapiversion', 1);
+
+        // Path to the SSL certificate / Keyfile / CertificateChainFile / CA certificate
+        setDBSetting('ssl_cert_file', $certFile);
+        setDBSetting('ssl_key_file', $certKeyFile);
+        setDBSetting('ssl_cert_chainfile', $certChainFile);
+        setDBSetting('ssl_ca_file', $certCAFile);
+
+        // Trigger cron type '1: Rebuilding webserver-configuration'
+        triggerCron(1);
+
+        // Disable LE cron
+        $GLOBALS['db']->query('UPDATE ' . TABLE_PANEL_CRONRUNS . ' SET isactive = 0 WHERE module = "froxlor/letsencrypt"');
+
+        // Trigger cron type '99: Rebuilding cron.d file`
+        triggerCron('99');
+    }
 }
 
 /**
- * Update daily cron job
+ * Update cron job
  */
-function updateDailyCronJob()
+function updateCronJob()
 {
-    if (CRON_DAILY_CONFIG) {
+    if (CRON_CONFIG) {
         if (DEBUG) {
-            logSyslog(LOG_DEBUG, 'Updating cron.daily');
+            logSyslog(LOG_DEBUG, 'Updating cron config');
         }
 
-        file_put_contents(CRON_DAILY_FILENAME, '#!/bin/sh
+        file_put_contents(CRON_FILENAME, '#!/bin/sh
 
 # Update Let\'s Encrypt Froxlor certificates
 /usr/bin/php ' . realpath(dirname($_SERVER['SCRIPT_FILENAME'])) . DIRECTORY_SEPARATOR . basename($_SERVER['SCRIPT_FILENAME']) . " > /dev/null 2>&1\n");
 
-        chmod(CRON_DAILY_FILENAME, 755);
+        chmod(CRON_FILENAME, 755);
     }
 }
 

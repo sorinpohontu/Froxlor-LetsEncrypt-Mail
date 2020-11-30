@@ -14,12 +14,12 @@
 // Config
 require_once (dirname(__FILE__) . DIRECTORY_SEPARATOR . 'config.php');
 
-// Check requirements
-if (checkInstall()) {
-    try {
-        // Database connection
-        $db = new Db($sql['host'], $sql['db'], $sql['user'], $sql['password']);
+try {
+    // Database connection
+    $db = new Db($sql['host'], $sql['db'], $sql['user'], $sql['password']);
 
+    // Check requirements
+    if (checkInstall()) {
         // Generate a single SSL certificate for all email hosts with an active email accounts (including GETSSL_HOSTNAME)
         runGetSSL(GETSSL_HOSTNAME, getDBEmailHosts($db));
 
@@ -46,9 +46,9 @@ if (checkInstall()) {
         if ($triggerCron) {
             triggerCron(1);
         }
-    } catch (PDOException $e) {
-        logSyslog(LOG_ERR, 'Error connecting to Control Panel database!');
     }
+} catch (PDOException $e) {
+    logSyslog(LOG_ERR, 'Error connecting to Control Panel database!');
 }
 
 ?>

@@ -41,8 +41,10 @@ define('POSTFIX_CONFIG', '/etc/postfix/main.cf');
 define('DOVECOT_UPDATE_CONFIG', true);
 define('DOVECOT_CONFIG', '/etc/dovecot/conf.d/10-ssl.conf');
 
-define('CRON_DAILY_CONFIG', true);
-define('CRON_DAILY_FILENAME', '/etc/cron.daily/lets-encrypt-mail-san');
+define('FROXLOR_UPDATE_CONFIG', true);
+
+define('CRON_CONFIG', true);
+define('CRON_FILENAME', '/etc/cron.hourly/lets-getssl-froxlor');
 
 /* Show/hide debug info */
 define('DEBUG', true);
