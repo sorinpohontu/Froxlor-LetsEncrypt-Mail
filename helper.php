@@ -34,6 +34,8 @@ function runGetSSL($domain, $sans = NULL)
     exec(GETSSL_BIN . (GETSSL_BIN_OPTIONS ? ' ' . GETSSL_BIN_OPTIONS : '') . ' -w ' . GETSSL_CONFIG_PATH . ' -d ' . $domain, $pOutput, $pExitCode);
     if (DEBUG) {
         logSyslog(LOG_DEBUG, "runGetSSL for $domain exit code: $pExitCode");
+    }
+    if (DEBUG_EXTENDED) {
         logSyslog(LOG_DEBUG, $pOutput);
     }
 
@@ -120,11 +122,14 @@ function getSSLDomains()
         ' AND (email_only = 0) ' .
         ' AND (letsencrypt = 1) ' .
         ' AND (aliasdomain IS NULL) ' .
-        ' AND (parentdomainid = 0)'
+        ' AND (parentdomainid = 0) ' .
+        ' ORDER BY domain'
     );
 
     if ($domains) {
         foreach ($domains as $domain) {
+            $result[$domain['domain']] = '';
+
             if ($domain['wwwserveralias'] == 1) {
                 $result[$domain['domain']] = 'www.' . $domain['domain'];
             }
@@ -135,7 +140,8 @@ function getSSLDomains()
                 ' AND (email_only = 0) ' .
                 ' AND (letsencrypt = 1) ' .
                 ' AND (aliasdomain IS NULL) ' .
-                ' AND (parentdomainid = ' . $domain['id'] . ')'
+                ' AND (parentdomainid = ' . $domain['id'] . ')' .
+                ' ORDER BY domain'
             );
 
             if (count($subDomains) > 0) {
@@ -161,10 +167,7 @@ function getSSLDomains()
                         $result[$domain['domain']] = $subDomain['domain'];
                     }
                 }
-            } else {
-                $result[$domain['domain']] = '';
             }
-
         }
     }
 

@@ -22,8 +22,8 @@ define('GETSSL_HOSTNAME', trim(`hostname --fqdn`));
 define('GETSSL_BIN', '/usr/local/bin/getssl');
 define('GETSSL_BIN_OPTIONS', '-q -u');
 define('GETSSL_CONFIG_PATH', '/etc/ssl/letsencrypt');
-define('GETSSL_CONFIG', GETSSL_CONFIG_PATH . '/getssl.cfg');
-define('GETSSL_ACCOUNT_KEY', GETSSL_CONFIG_PATH . '/account.key');
+define('GETSSL_CONFIG', GETSSL_CONFIG_PATH . DIRECTORY_SEPARATOR . 'getssl.cfg');
+define('GETSSL_ACCOUNT_KEY', GETSSL_CONFIG_PATH . DIRECTORY_SEPARATOR . 'account.key');
 define('GETSSL_INSTALL', 'https://raw.githubusercontent.com/srvrco/getssl/master/getssl');
 
 define('LETSENCRYPT_CA', 'https://acme-v02.api.letsencrypt.org');
@@ -46,6 +46,7 @@ define('CRON_DAILY_FILENAME', '/etc/cron.daily/lets-encrypt-mail-san');
 
 /* Show/hide debug info */
 define('DEBUG', true);
+define('DEBUG_EXTENDED', false);
 define('DEBUG_LOG_IDENT', 'getssl-froxlor');
 
 /* Database helper class */
