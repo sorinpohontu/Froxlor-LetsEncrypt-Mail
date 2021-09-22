@@ -416,7 +416,7 @@ function updateServicesConfig()
         // Disable LE cron
         $GLOBALS['db']->query('UPDATE ' . TABLE_PANEL_CRONRUNS . ' SET isactive = 0 WHERE module = "froxlor/letsencrypt"');
 
-        // Delete certificate for Froxlor host
+        // Delete certificate for Control panel host (domainid = 0)
         $GLOBALS['db']->query('DELETE FROM ' . TABLE_PANEL_DOMAIN_SSL_SETTINGS . ' WHERE domainid = 0');
 
         // Trigger cron type '99: Rebuilding cron.d file`
